@@ -1,0 +1,63 @@
+/* Custom styling & animations for ClipPulse AI */
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(236, 72, 153, 0.5);
+  }
+}
+
+.glow-hover:hover {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0F19;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1F2937;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Line clamps */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Phone aspect ratio card video container */
+.phone-aspect-container {
+  aspect-ratio: 9 / 16;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}

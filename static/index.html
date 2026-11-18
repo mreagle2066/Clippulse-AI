@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClipPulse AI - Viral Video Clipping Engine</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              900: '#4c1d95',
+            },
+            dark: {
+              900: '#0B0F19',
+              800: '#111827',
+              700: '#1F2937',
+              600: '#374151'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-600 selection:text-white">
+
+  <!-- Navbar -->
+  <header class="border-b border-gray-800/80 bg-dark-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-pink-500 flex items-center justify-center shadow-lg shadow-brand-500/25">
+          <i data-lucide="scissors" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold bg-gradient-to-r from-white via-gray-200 to-brand-500 bg-clip-text text-transparent">ClipPulse AI</span>
+          <span class="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-900/60 border border-brand-700 text-brand-100">Gemini Powered</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="apiKeyBtn" class="flex items-center space-x-1.5 text-xs font-medium px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 border border-gray-700 transition">
+          <i data-lucide="key" class="w-3.5 h-3.5 text-brand-500"></i>
+          <span id="apiKeyStatusText">API Key</span>
+        </button>
+        <div id="systemStatusPill" class="flex items-center space-x-2 text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-800 text-emerald-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Engine Ready</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div class="text-center max-w-3xl mx-auto space-y-3">
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
+        Turn Long Videos into <span class="bg-gradient-to-r from-brand-500 via-pink-500 to-yellow-400 bg-clip-text text-transparent">Viral Shorts</span>
+      </h1>
+      <p class="text-gray-400 text-sm sm:text-base">
+        Paste a YouTube URL or upload a video. Google Gemini analyzes visual & audio hooks to find high-retention moments and automatically formats them into 9:16 vertical clips.
+      </p>
+    </div>
+
+    <!-- Input Card -->
+    <div class="bg-dark-800/90 border border-gray-800 rounded-2xl p-6 shadow-2xl backdrop-blur max-w-3xl mx-auto space-y-6">
+      
+      <!-- Source Tabs -->
+      <div class="flex border-b border-gray-700/80">
+        <button id="tabUrl" class="tab-btn flex-1 pb-3 text-sm font-semibold flex items-center justify-center space-x-2 border-b-2 border-brand-500 text-brand-500 transition">
+          <i data-lucide="youtube" class="w-4 h-4"></i>
+          <span>YouTube URL</span>
+        </button>
+        <button id="tabUpload" class="tab-btn flex-1 pb-3 text-sm font-semibold flex items-center justify-center space-x-2 border-b-2 border-transparent text-gray-400 hover:text-gray-200 transition">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span>Upload Video File</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: YouTube URL -->
+      <div id="panelUrl" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">YouTube Video URL</label>
+          <div class="relative flex items-center">
+            <div class="absolute left-3 text-gray-400">
+              <i data-lucide="link" class="w-5 h-5"></i>
+            </div>
+            <input type="text" id="youtubeUrlInput" placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." 
+                   class="w-full pl-11 pr-24 py-3 bg-dark-900 border border-gray-700 rounded-xl text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition placeholder-gray-500">
+            <button id="pasteUrlBtn" class="absolute right-2 px-3 py-1.5 text-xs font-medium bg-dark-700 hover:bg-dark-600 rounded-lg text-gray-300 transition">
+              Paste
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: File Upload -->
+      <div id="panelUpload" class="hidden space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Video File (MP4, MOV, WebM, MKV)</label>
+          <div id="dropZone" class="border-2 border-dashed border-gray-700 hover:border-brand-500 rounded-2xl p-8 text-center cursor-pointer transition bg-dark-900/50 hover:bg-dark-900/80">
+            <input type="file" id="fileInput" accept="video/*" class="hidden">
+            <div class="space-y-2 flex flex-col items-center">
+              <div class="w-12 h-12 rounded-full bg-brand-900/40 text-brand-500 flex items-center justify-center">
+                <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+              </div>
+              <p class="text-sm font-medium text-gray-300" id="filePrompt">Drag & drop your video here, or <span class="text-brand-500 underline">browse</span></p>
+              <p class="text-xs text-gray-500">Up to 2GB • MP4, MOV, WebM, MKV</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-800">
+        <!-- Style -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Clip Format</label>
+          <select id="clipStyleSelect" class="w-full py-2.5 px-3 bg-dark-900 border border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-brand-500 text-gray-200">
+            <option value="vertical_fit" selected>📱 Vertical 9:16 (Fit Full 16:9 • Clean Black Bars)</option>
+            <option value="vertical_blur">✨ Vertical 9:16 (Blurred Podcast Style)</option>
+            <option value="vertical_crop">🎯 Vertical 9:16 (Center Fill Crop)</option>
+            <option value="landscape">🖥️ Horizontal 16:9 (Original Ratio)</option>
+          </select>
+        </div>
+
+        <!-- Duration -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Clip Duration</label>
+          <select id="durationSelect" class="w-full py-2.5 px-3 bg-dark-900 border border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-brand-500 text-gray-200">
+            <option value="15-30">⚡ 15 - 30 seconds (Punchy)</option>
+            <option value="20-60" selected>🔥 20 - 60 seconds (Standard Shorts)</option>
+            <option value="60-90">📖 60 - 90 seconds (Extended Story)</option>
+          </select>
+        </div>
+
+        <!-- Number of Clips -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Max Moments</label>
+          <select id="maxClipsSelect" class="w-full py-2.5 px-3 bg-dark-900 border border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-brand-500 text-gray-200">
+            <option value="3">3 Top Moments</option>
+            <option value="5" selected>5 Top Moments</option>
+            <option value="8">8 Top Moments</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Advanced Optional Focus Prompt -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+          Custom AI Focus <span class="text-gray-500 font-normal lowercase">(optional topic/style focus)</span>
+        </label>
+        <input type="text" id="focusPromptInput" placeholder="e.g. 'Find the funniest moments' or 'Find the key business advice' or 'Extract arguments'"
+               class="w-full py-2.5 px-3 bg-dark-900 border border-gray-700 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-brand-500 placeholder-gray-500 text-gray-200">
+      </div>
+
+      <!-- Submit Button -->
+      <div>
+        <button id="startProcessBtn" class="w-full py-3.5 px-6 rounded-xl font-bold text-white bg-gradient-to-r from-brand-600 via-brand-500 to-pink-500 hover:from-brand-500 hover:to-pink-400 shadow-lg shadow-brand-500/30 transition transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center space-x-2 text-base">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+          <span>Generate Viral Clips with Gemini</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Progress Section (Hidden initially) -->
+    <div id="progressSection" class="hidden max-w-3xl mx-auto bg-dark-800 border border-brand-900/50 rounded-2xl p-6 shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-brand-900/50 flex items-center justify-center text-brand-400">
+            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white" id="progressStatusTitle">Processing Video</h3>
+            <p class="text-xs text-gray-400" id="progressMessage">Analyzing media hooks...</p>
+          </div>
+        </div>
+        <span class="text-sm font-bold text-brand-400" id="progressPercent">0%</span>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-dark-900 rounded-full h-2.5 overflow-hidden">
+        <div id="progressBar" class="bg-gradient-to-r from-brand-500 to-pink-500 h-2.5 rounded-full transition-all duration-500" style="width: 5%"></div>
+      </div>
+
+      <div class="grid grid-cols-4 gap-2 pt-2 text-center text-xs text-gray-400">
+        <div id="stepIngest" class="flex flex-col items-center space-y-1 text-brand-400 font-semibold">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>1. Ingest</span>
+        </div>
+        <div id="stepAnalyze" class="flex flex-col items-center space-y-1">
+          <i data-lucide="brain-circuit" class="w-4 h-4"></i>
+          <span>2. Gemini AI</span>
+        </div>
+        <div id="stepClip" class="flex flex-col items-center space-y-1">
+          <i data-lucide="crop" class="w-4 h-4"></i>
+          <span>3. Format 9:16</span>
+        </div>
+        <div id="stepDone" class="flex flex-col items-center space-y-1">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span>4. Ready</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="errorBanner" class="hidden max-w-3xl mx-auto bg-red-950/70 border border-red-800 rounded-xl p-4 text-red-200 text-sm flex items-start space-x-3">
+      <i data-lucide="alert-triangle" class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"></i>
+      <div class="flex-1" id="errorMessage">An error occurred while processing the video.</div>
+    </div>
+
+    <!-- Results Section -->
+    <div id="resultsSection" class="hidden space-y-6">
+      
+      <!-- Video Header Card -->
+      <div class="bg-dark-800 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div id="resultThumbContainer" class="w-20 h-14 rounded-lg bg-dark-900 overflow-hidden flex-shrink-0 border border-gray-700">
+            <img id="resultThumb" src="" alt="Thumbnail" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <h2 id="resultTitle" class="text-lg font-bold text-white line-clamp-1">Video Title</h2>
+            <p id="resultMeta" class="text-xs text-gray-400">Duration: 12:45 • Clips generated</p>
+          </div>
+        </div>
+
+        <button id="downloadAllBtn" class="flex items-center space-x-2 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20 transition">
+          <i data-lucide="archive" class="w-4 h-4"></i>
+          <span>Download All Clips (ZIP)</span>
+        </button>
+      </div>
+
+      <!-- Clips Grid -->
+      <div id="clipsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Clip cards will be injected dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Video Preview Modal -->
+  <div id="previewModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-dark-800 border border-gray-700 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl relative">
+      <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+        <h3 id="modalTitle" class="text-sm font-bold text-white truncate">Clip Preview</h3>
+        <button id="closeModalBtn" class="text-gray-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="bg-black flex items-center justify-center max-h-[70vh]">
+        <video id="modalVideo" controls autoplay class="max-h-[68vh] w-auto mx-auto rounded"></video>
+      </div>
+      <div class="p-4 border-t border-gray-700 flex justify-between items-center bg-dark-900">
+        <span id="modalTimestamp" class="text-xs text-gray-400 font-mono">00:00 - 00:30</span>
+        <a id="modalDownloadBtn" href="#" download class="flex items-center space-x-1 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-semibold transition">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span>Download Clip</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Modal -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-dark-800 border border-gray-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center space-x-2">
+          <i data-lucide="key" class="w-5 h-5 text-brand-500"></i>
+          <span>Gemini API Key</span>
+        </h3>
+        <button id="closeKeyModalBtn" class="text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <p class="text-xs text-gray-400">
+        Get your free API key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-brand-500 underline font-medium">Google AI Studio</a>. It powers the multimodal video hook detection.
+      </p>
+      <input type="password" id="modalKeyInput" placeholder="AIzaSy..." 
+             class="w-full py-2.5 px-3 bg-dark-900 border border-gray-700 rounded-xl text-sm focus:outline-none focus:border-brand-500 text-gray-200">
+      <div class="flex justify-end space-x-2 pt-2">
+        <button id="saveKeyBtn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-semibold transition">
+          Save Key
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-gray-800/60 py-6 text-center text-xs text-gray-500">
+    ClipPulse AI • Powered by Google Gemini & FFmpeg • Built for Creators
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

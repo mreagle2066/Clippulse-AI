@@ -1,0 +1,29 @@
+# Environment & Secrets (NEVER push API keys)
+.env
+*.env
+.env.*
+!.env.example
+
+# Python Virtual Environments & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Mac / OS metadata
+.DS_Store
+.DS_Store?
+._*
+
+# Local binaries (Cloud hosting installs native FFmpeg via Dockerfile)
+bin/
+
+# Video uploads, clips and cache (prevent pushing large video media)
+uploads/*
+!uploads/.gitkeep
+output/*
+!output/.gitkeep
+output/cache/*
+!output/cache/.gitkeep
