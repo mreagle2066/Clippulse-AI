@@ -2,10 +2,10 @@ services:
   - type: web
     name: clippulse-ai
     env: docker
-    plan: standard
+    plan: free
     dockerfilePath: Dockerfile
     envVars:
       - key: PORT
-        value: 8000
+        value: 10000
       - key: GEMINI_API_KEY
         sync: false
