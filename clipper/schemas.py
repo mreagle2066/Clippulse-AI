@@ -25,7 +25,7 @@ class ProcessRequest(BaseModel):
     style: str = "vertical_fit"  # "vertical_fit", "vertical_blur", "vertical_crop", "landscape"
     min_duration: int = 15
     max_duration: int = 60
-    max_clips: int = 5
+    max_clips: int = Field(default=5, ge=1, le=50, description="Max viral moments to extract")
     focus_prompt: Optional[str] = None
     api_key: Optional[str] = None
 

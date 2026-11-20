@@ -188,11 +188,12 @@ class VideoAnalyzer:
                     ]
                 }],
                 "generationConfig": {
-                    "responseMimeType": "application/json"
+                    "responseMimeType": "application/json",
+                    "maxOutputTokens": 8192
                 }
             }
             try:
-                r = requests.post(gen_url, json=payload, timeout=90)
+                r = requests.post(gen_url, json=payload, timeout=180)
                 if r.status_code == 200:
                     data = r.json()
                     return data["candidates"][0]["content"]["parts"][0]["text"]
