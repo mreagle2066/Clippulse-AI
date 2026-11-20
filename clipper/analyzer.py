@@ -20,6 +20,7 @@ For each highlight moment:
 
 Identify up to {max_clips} best moments.
 
+IMPORTANT: In titles, hooks, summaries, and captions, NEVER use unescaped double quotes inside string values (use single quotes 'like this' for spoken dialogue or titles).
 Return ONLY a valid, strictly parseable JSON array of objects with realistic values matching this example format (NO COMMENTS, NO TRAILING COMMAS):
 [
   {{
@@ -205,6 +206,56 @@ class VideoAnalyzer:
 
         raise RuntimeError(f"All Gemini models failed to analyze media: {last_err}")
 
+    def _regex_parse_moments(self, text: str) -> List[Dict[str, Any]]:
+        """Fallback extractor that parses moment objects even if internal double quotes are unescaped or text is truncated."""
+        moments_data = []
+        parts = re.split(r'(?=\{\s*\"start_time\")', text)
+        blocks = [p for p in parts if '"start_time"' in p]
+        if not blocks:
+            blocks = re.findall(r'\{[^{}]*?\"start_time\"[^{}]*?\"end_time\"[^{}]*?\}', text, re.DOTALL)
+
+        for b in blocks:
+            st_m = re.search(r'\"start_time\"\s*:\s*([0-9.]+)', b)
+            et_m = re.search(r'\"end_time\"\s*:\s*([0-9.]+)', b)
+            if not st_m or not et_m:
+                continue
+            try:
+                st = float(st_m.group(1))
+                et = float(et_m.group(1))
+            except ValueError:
+                continue
+
+            title_m = re.search(r'\"title\"\s*:\s*\"(.*?)(?=\",\s*\"|\"\s*\}|\"\s*$)', b, re.DOTALL)
+            title = title_m.group(1).strip() if title_m else f"Highlight #{len(moments_data) + 1}"
+
+            hook_m = re.search(r'\"hook\"\s*:\s*\"(.*?)(?=\",\s*\"|\"\s*\}|\"\s*$)', b, re.DOTALL)
+            hook = hook_m.group(1).strip() if hook_m else ""
+
+            summary_m = re.search(r'\"summary\"\s*:\s*\"(.*?)(?=\",\s*\"|\"\s*\}|\"\s*$)', b, re.DOTALL)
+            summary = summary_m.group(1).strip() if summary_m else ""
+
+            vs_m = re.search(r'\"virality_score\"\s*:\s*(\d+)', b)
+            vs = int(vs_m.group(1)) if vs_m else 85
+
+            cap_m = re.search(r'\"suggested_caption\"\s*:\s*\"(.*?)(?=\",\s*\"|\"\s*\}|\"\s*$)', b, re.DOTALL)
+            caption = cap_m.group(1).strip() if cap_m else ""
+
+            ht_m = re.findall(r'\"(#[^\"]+)\"', b)
+            hashtags = ht_m if ht_m else ["#Shorts", "#Viral", "#Trending"]
+
+            moments_data.append({
+                "start_time": st,
+                "end_time": et,
+                "title": title,
+                "hook": hook,
+                "summary": summary,
+                "virality_score": vs,
+                "suggested_caption": caption,
+                "hashtags": hashtags
+            })
+
+        return moments_data
+
     def _parse_and_validate(
         self,
         raw_text: str,
@@ -212,7 +263,7 @@ class VideoAnalyzer:
         min_duration: int,
         max_duration: int
     ) -> List[Moment]:
-        """Parses JSON text and validates boundaries with multi-layer sanitization."""
+        """Parses JSON text and validates boundaries with multi-layer sanitization and regex recovery."""
         clean_text = raw_text.strip()
         # Strip markdown code blocks
         clean_text = re.sub(r'^```(?:json)?\s*', '', clean_text, flags=re.IGNORECASE)
@@ -227,20 +278,23 @@ class VideoAnalyzer:
 
         data = None
         try:
-            data = json.loads(clean_text)
+            data = json.loads(clean_text, strict=False)
         except Exception:
-            # Try regex extract between outer [ and ] or { and }
-            match = re.search(r'(\[.*\]|\{.*\})', clean_text, re.DOTALL)
-            if match:
-                candidate = match.group(1).strip()
-                candidate = re.sub(r'//.*?(?=\n|$)', '', candidate)
-                candidate = re.sub(r',\s*([\]}])', r'\1', candidate)
-                try:
-                    data = json.loads(candidate)
-                except Exception:
-                    pass
+            try:
+                match = re.search(r'(\[.*\]|\{.*\})', clean_text, re.DOTALL)
+                if match:
+                    candidate = match.group(1).strip()
+                    candidate = re.sub(r'//.*?(?=\n|$)', '', candidate)
+                    candidate = re.sub(r',\s*([\]}])', r'\1', candidate)
+                    data = json.loads(candidate, strict=False)
+            except Exception:
+                pass
 
-        if data is None:
+        # Robust Fallback: if standard JSON parsing failed (e.g. unescaped quotes or newlines)
+        if not data:
+            data = self._regex_parse_moments(clean_text)
+
+        if not data:
             raise ValueError(f"Could not parse Gemini JSON response: {clean_text[:200]}...")
 
         if not isinstance(data, list):
