@@ -106,11 +106,15 @@ def run_pipeline(
             ], stdout=subprocess.PIPE, text=True)
             task.video_duration = float(probe.stdout.strip() or 0.0)
 
-        # Phase 2: Audio extraction for lightweight Gemini multimodal analysis
+        # Phase 2: Media preparation for Gemini multimodal analysis
         task.status = "analyzing"
         task.progress = 40
-        task.message = "Extracting audio track for fast multimodal processing..."
-        audio_path = VideoDownloader.extract_audio(video_path)
+        if VideoDownloader.has_audio_stream(video_path):
+            task.message = "Extracting audio track for fast multimodal processing..."
+        else:
+            task.message = "No audio track detected. Optimizing video for Gemini visual analysis..."
+
+        analysis_media_path = VideoDownloader.prepare_media_for_analysis(video_path, duration=task.video_duration or 0.0)
 
         # Phase 3: Gemini Analysis
         task.message = "Google Gemini is analyzing video hooks and virality..."
@@ -120,7 +124,7 @@ def run_pipeline(
 
         analyzer = VideoAnalyzer(api_key=gemini_key)
         moments = analyzer.analyze_media(
-            media_path=audio_path,
+            media_path=analysis_media_path,
             video_duration=task.video_duration or 0.0,
             min_duration=min_duration,
             max_duration=max_duration,

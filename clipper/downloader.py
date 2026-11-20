@@ -9,6 +9,9 @@ import yt_dlp
 def get_ffmpeg_path():
     return shutil.which("ffmpeg") or os.path.join(os.path.dirname(os.path.dirname(__file__)), "bin", "ffmpeg")
 
+def get_ffprobe_path():
+    return shutil.which("ffprobe") or os.path.join(os.path.dirname(os.path.dirname(__file__)), "bin", "ffprobe")
+
 class VideoDownloader:
     """Handles downloading YouTube videos and extracting metadata using yt-dlp."""
 
@@ -104,23 +107,83 @@ class VideoDownloader:
             }
 
     @staticmethod
-    def extract_audio(video_path: str, output_path: Optional[str] = None) -> str:
+    def has_audio_stream(video_path: str) -> bool:
+        """Check if video file contains at least one audio stream."""
+        cmd = [
+            get_ffprobe_path(), "-v", "error",
+            "-select_streams", "a:0",
+            "-show_entries", "stream=codec_type",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path
+        ]
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            return bool(res.stdout.strip())
+        except Exception:
+            return False
+
+    @staticmethod
+    def extract_audio(video_path: str, output_path: Optional[str] = None, duration: float = 0.0) -> str:
         """
         Extract compressed MP3 audio from a video file for ultra-fast upload to Gemini.
+        If the video has no audio stream, generates a silent placeholder so FFmpeg never crashes.
         """
         if output_path is None:
             base, _ = os.path.splitext(video_path)
             output_path = f"{base}_audio.mp3"
 
-        cmd = [
-            get_ffmpeg_path(), "-y",
-            "-i", video_path,
-            "-vn",
-            "-acodec", "libmp3lame",
-            "-ar", "24000",
-            "-ac", "1",
-            "-b:a", "48k",
-            output_path
-        ]
+        if VideoDownloader.has_audio_stream(video_path):
+            cmd = [
+                get_ffmpeg_path(), "-y",
+                "-i", video_path,
+                "-vn",
+                "-acodec", "libmp3lame",
+                "-ar", "24000",
+                "-ac", "1",
+                "-b:a", "48k",
+                output_path
+            ]
+        else:
+            t = duration if duration > 0 else 10.0
+            cmd = [
+                get_ffmpeg_path(), "-y",
+                "-f", "lavfi",
+                "-i", "anullsrc=r=24000:cl=mono",
+                "-t", str(t),
+                "-acodec", "libmp3lame",
+                "-b:a", "48k",
+                output_path
+            ]
         subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         return output_path
+
+    @staticmethod
+    def prepare_media_for_analysis(video_path: str, duration: float = 0.0) -> str:
+        """
+        Returns the best media format for Gemini multimodal analysis:
+        - If audio exists: extracts ultra-compact 24kHz mono MP3 (~3MB)
+        - If silent / video-only: uses video directly (or a 480p proxy if video > 60MB)
+        """
+        if VideoDownloader.has_audio_stream(video_path):
+            return VideoDownloader.extract_audio(video_path, duration=duration)
+
+        # Silent or video-only file:
+        file_size = os.path.getsize(video_path)
+        if file_size <= 60 * 1024 * 1024:
+            return video_path
+
+        base, _ = os.path.splitext(video_path)
+        proxy_path = f"{base}_proxy_480p.mp4"
+        if not os.path.exists(proxy_path):
+            cmd = [
+                get_ffmpeg_path(), "-y",
+                "-i", video_path,
+                "-vf", "scale=-2:480",
+                "-c:v", "libx264",
+                "-preset", "ultrafast",
+                "-crf", "30",
+                "-an",
+                proxy_path
+            ]
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        return proxy_path
